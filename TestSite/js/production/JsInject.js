@@ -4,15 +4,7 @@ JsInject = {};
 
 JsInject.Container = function() { 
     this.serviceEntries = [];
-};
-
-JsInject.Container.prototype.Register = function(name, factory, scope) {
-    if(this.Registered(name))
-    {
-        throw "Factory with name '" + name + "' alredy registered";
-    }
-    
-    this.serviceEntries[name] = {factory: factory, scope: scope, instance: null};
+    this.disposables = [];
 };
 
 JsInject.Container.prototype.Resolve = function(name, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
@@ -25,8 +17,28 @@ JsInject.Container.prototype.TryResolve = function(name, arg1, arg2, arg3, arg4,
     return this.ResolveInternal(name, false, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 };
 
+JsInject.Container.prototype.RegisterInternal = function(name, factory, scope, owner) 
+{
+    if(this.RegisteredInternal(name))
+    {
+        throw "Factory with name '" + name + "' alredy registered";
+    }
+    
+    this.serviceEntries[name] = {factory: factory, scope: scope, owner: owner, instance: null};
+};
+
+JsInject.Container.prototype.Dispose = function(name) 
+{
+    for (var x in this.disposables)
+    {
+        var obj = this.disposables[x];
+        
+        obj.Dispose();
+    }
+};
+
 JsInject.Container.prototype.ResolveInternal = function(name, throwIfNotRegistered, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
-    if(!this.Registered(name))
+    if(!this.RegisteredInternal(name))
     {
         if(throwIfNotRegistered)
         {
@@ -39,20 +51,34 @@ JsInject.Container.prototype.ResolveInternal = function(name, throwIfNotRegister
     }
     
     var entry = this.serviceEntries[name];  
+    
     if(entry.scope === "container")
     {
         if(entry.instance === null)
         {
-            entry.instance = entry.factory(this, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+            entry.instance = this.CreateInstanceInternal(entry.factory, entry.owner, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
         }
         
         return entry.instance;
     }
 
-    return entry.factory(this, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+    return this.CreateInstanceInternal(entry.factory, entry.owner, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 };
 
-JsInject.Container.prototype.Registered = function(name) {
+JsInject.Container.prototype.CreateInstanceInternal = function(factory, owner, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) 
+{
+    var instance = factory(this, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+    
+    if(owner === "container" && typeof(instance.Dispose) === "function")
+    {
+        this.disposables.push(instance);
+    }
+    
+    return instance;
+};
+
+JsInject.Container.prototype.RegisteredInternal = function(name) 
+{
 	return this.serviceEntries[name] !== undefined;
 };
 
@@ -62,11 +88,21 @@ JsInject.Registration = function(name, factory)
     this.name = name;
     this.factory = factory;
     this.scope = "none";
+    this.owner = "consumer";
 };
 
 JsInject.Registration.prototype.Reused = function() 
 {
     this.scope = "container";
+    this.Owned();
+    
+    return this;
+};
+
+JsInject.Registration.prototype.Owned = function() 
+{
+    this.owner = "container";
+    
     return this;
 };
 
@@ -92,7 +128,7 @@ JsInject.ContainerBuilder.prototype.Create = function()
     {
         var registration = this.registrations[x];
         
-        container.Register(registration.name, registration.factory, registration.scope);
+        container.RegisterInternal(registration.name, registration.factory, registration.scope, registration.owner);
     }
     
     return container;
