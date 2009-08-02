@@ -93,15 +93,26 @@ InjectionTest.prototype.testResolveWithParameter = function()
     assertEquals(55, rabbit.GetWeight());
 };
 
-InjectionTest.prototype.testInstanceIsReusedWithingContainer = function() 
+InjectionTest.prototype.testInstanceIsNotReusedWithinContainer = function() 
 {
     var containerBuilder = new JsInject.ContainerBuilder();
     containerBuilder.Register("bar", function(c) {return new Bar();});
     var container = containerBuilder.Create(); 
 
-    var bar = container.TryResolve("bar");
+    var bar1 = container.Resolve("bar");
+    var bar2 = container.Resolve("bar");
     
-    assertNotNull(bar);
+    assertNotSame(bar1, bar2);
+};
+
+InjectionTest.prototype.testInstanceIsReusedWithinContainer = function() 
+{
+    var containerBuilder = new JsInject.ContainerBuilder();
+    containerBuilder.Register("bar", function(c) {return new Bar();}).Reused();
+    var container = containerBuilder.Create(); 
+
+    var bar1 = container.Resolve("bar");
+    var bar2 = container.Resolve("bar");
     
-    fail("Not implemented");
+    assertSame(bar1, bar2);
 };
