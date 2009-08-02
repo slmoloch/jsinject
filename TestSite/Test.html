@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+    <title>JsInject Test Page</title>
+    <script type="text/javascript" src="js/production/frameworks/jquery-1.3.2.min.js"></script>
+    <script type="text/javascript" src="js/production/frameworks/jquery-jtemplates.min.js"></script>
+    <script type="text/javascript" src="js/production/JsInject.js"></script>
+    
+    <script type="text/javascript" src="js/production/components/AjaxServices.js"></script>
+    <script type="text/javascript" src="js/production/components/Mediator.js"></script>
+    <script type="text/javascript" src="js/production/components/MessageControl.js"></script>
+    <script type="text/javascript" src="js/production/components/TemplatesRepository.js"></script>
+    <script type="text/javascript" src="js/production/components/TriggerButton.js"></script>
+</head>
+<body>
+
+    <script type="text/javascript">
+        $(function() { 
+            
+            var container = CreateContainer();
+            var mediator = container.Resolve("Mediator");
+            mediator.Load();
+         });
+         
+         function CreateContainer()
+         {
+            var builder = new JsInject.ContainerBuilder();
+         
+            builder.Register("AjaxServices", function(c) {return new AjaxServices();}).Reused();
+            builder.Register("TemplatesRepository", function(c) {return new TemplatesRepository();}).Reused();
+            builder.Register("MessageControl", function(c) {return new MessageControl(c.Resolve("TemplatesRepository"));});
+            builder.Register("TriggerButton", function(c) {return new TriggerButton();});
+            builder.Register("Mediator", function(c) {return new Mediator(c.Resolve("AjaxServices"), c.Resolve("MessageControl"), c.Resolve("TriggerButton"));});
+            
+            return builder.Create(); 
+         }
+         
+    </script>
+    
+    <div id="messageContainer"></div>
+    <input type="button" id="triggerButton" value="Trigger" />
+</body>
+</html>
