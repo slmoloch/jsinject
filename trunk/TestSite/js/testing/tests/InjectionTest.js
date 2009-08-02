@@ -5,9 +5,12 @@
     Bar, 
     Foo, 
     Rabbit,
+    DisposableRabbit,
     assertNotNull,
     assertEquals,
     assertNull,
+    assertNotSame,
+    assertSame,
     fail */
     
 InjectionTest = TestCase("InjectionTest");
@@ -30,11 +33,11 @@ InjectionTest.prototype.testDoubleRegisteringError = function()
 {
     var containerBuilder = new JsInject.ContainerBuilder();
     containerBuilder.Register("bar", function(c) {return new Bar();});
-    var container = containerBuilder.Create(); 
+    containerBuilder.Register("bar", function(c) {return new Foo();});
     
     try
     {
-        container.Register("bar", function(c) {return new Foo();});
+        var container = containerBuilder.Create();
         fail("Error must be thrown at this moment");
     }
     catch(err)
@@ -115,4 +118,56 @@ InjectionTest.prototype.testInstanceIsReusedWithinContainer = function()
     var bar2 = container.Resolve("bar");
     
     assertSame(bar1, bar2);
+};
+
+InjectionTest.prototype.testContainerOwnedNotReusedInstancesAreDisposed = function() 
+{
+    var containerBuilder = new JsInject.ContainerBuilder();
+    containerBuilder.Register("DisposableRabbit", function(c) {return new DisposableRabbit();}).Owned();
+    var container = containerBuilder.Create(); 
+
+    var rabbit = container.Resolve("DisposableRabbit");
+  
+    container.Dispose();
+    
+    assertEquals(true, rabbit.disposed);
+};
+
+InjectionTest.prototype.testContainerOwnedAndReusedInstancesAreDisposed = function() 
+{
+    var containerBuilder = new JsInject.ContainerBuilder();
+    containerBuilder.Register("DisposableRabbit", function(c) {return new DisposableRabbit();}).Reused().Owned();
+    var container = containerBuilder.Create(); 
+
+    var rabbit = container.Resolve("DisposableRabbit");
+  
+    container.Dispose();
+    
+    assertEquals(true, rabbit.disposed);
+};
+
+InjectionTest.prototype.testConsumerOwnedNotReusedInstancesAreNotDisposed = function() 
+{
+    var containerBuilder = new JsInject.ContainerBuilder();
+    containerBuilder.Register("DisposableRabbit", function(c) {return new DisposableRabbit();});
+    var container = containerBuilder.Create(); 
+
+    var rabbit = container.Resolve("DisposableRabbit");
+  
+    container.Dispose();
+    
+    assertEquals(false, rabbit.disposed);
+};
+
+InjectionTest.prototype.testConsumerOwnedReusedInstancesAreDisposed = function() 
+{
+    var containerBuilder = new JsInject.ContainerBuilder();
+    containerBuilder.Register("DisposableRabbit", function(c) {return new DisposableRabbit();}).Reused();
+    var container = containerBuilder.Create(); 
+
+    var rabbit = container.Resolve("DisposableRabbit");
+  
+    container.Dispose();
+    
+    assertEquals(true, rabbit.disposed);
 };
